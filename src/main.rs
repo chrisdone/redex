@@ -119,7 +119,7 @@ fn substitute(that: Name, e: Expression, arg: Expression) -> Expression {
 
 // https://github.com/duet-lang/duet/blob/f58e0f537c55713048fa17c723c7d0ad80a31368/src/Duet/Stepper.hs#L248
 
-fn rename(scope: &mut HashMap<Name,Name>, e: Expression, mut names: u64) -> Expression {
+fn rename(scope: &mut HashMap<Name,Name>, e: Expression, names: &mut u64) -> Expression {
     match e {
         Expression::LiteralExpression{..} => e,
         Expression::ApplicationExpression{function, argument} =>
@@ -128,10 +128,10 @@ fn rename(scope: &mut HashMap<Name,Name>, e: Expression, mut names: u64) -> Expr
                 argument: Box::new(rename(scope, *argument, names))
             },
         Expression::LambdaExpression{parameter, body} => {
-            names = names + 1;
-            scope.insert(parameter, Name(names));
+            *names = *names + 1;
+            scope.insert(parameter, Name(*names));
             Expression::LambdaExpression {
-                parameter: Name(names),
+                parameter: Name(*names),
                 body: Box::new(rename(scope, *body, names))
             }
         },
