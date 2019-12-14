@@ -1,3 +1,19 @@
+/*
+
+Example:
+
+    $ cargo watch -x run > /dev/null
+        Finished dev [unoptimized + debuginfo] target(s) in 0.00s
+         Running `target/debug/redex`
+
+Memory use 1.7m, cpu = 100%
+
+13873 chris     20   0   17.0m   1.8m   1.6m R 100.0  0.0   0:26.34 redex
+
+That's good!
+
+*/
+
 use std::collections::HashMap;
 use std::result::Result;
 
@@ -96,20 +112,27 @@ fn main() {
 }
 
 // Just call expand_whnf and repeat. Didn't even bother to use a loop.
-fn step(e: Expression) {
-    let e_clone = e.clone();
-    let mut scope = HashMap::new();
-    let mut names = 1000;
-    match rename(&mut scope, e_clone, &mut names) {
-        Err(e) => println!("Rename error: {:#?}", e),
-        Ok(e_renamed) => {
-            let e_renamed_clone = e_renamed.clone();
-            println!("= {:?}", e_renamed);
-            let e_expanded = expand_whnf(e_renamed);
-            if e_renamed_clone == e_expanded {
-                println!("Done!")
-            } else {
-                step(e_expanded)
+fn step(e0: Expression) {
+    let mut e = e0;
+    loop {
+        let e_clone = e.clone();
+        let mut scope = HashMap::new();
+        let mut names = 1000;
+        match rename(&mut scope, e_clone, &mut names) {
+            Err(e) => {
+                println!("Rename error: {:#?}", e);
+                break
+            },
+            Ok(e_renamed) => {
+                let e_renamed_clone = e_renamed.clone();
+                println!("= {:?}", e_renamed);
+                let e_expanded = expand_whnf(e_renamed);
+                if e_renamed_clone == e_expanded {
+                    println!("Done!");
+                    break
+                } else {
+                    e = e_expanded;
+                }
             }
         }
     }
