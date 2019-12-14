@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 // Implements a trivial l-calc interpreter. Needs a renamer to be fully correct.
 //
 // Duet has cases and type classes (not necessary for such a
@@ -10,7 +12,7 @@
 // e.g. (https://github.com/mgattozzi/curryrs) or the modern
 // equivalent.
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Hash, Eq)]
 struct Name(pub u64);
 
 #[derive(Debug, PartialEq, Clone)]
@@ -26,19 +28,19 @@ enum Expression {
 
 #[derive(Debug, PartialEq, Clone)]
 enum Literal {
-    IntegerLiteral { i64: i64 }
+    I64Literal { i64: i64 }
 }
 
 fn main() {
     step(Expression::VariableExpression {name: Name(0)});
-    step(Expression::LiteralExpression {literal: Literal::IntegerLiteral {i64: 123}});
+    step(Expression::LiteralExpression {literal: Literal::I64Literal {i64: 123}});
     step(Expression::ApplicationExpression {
         function: Box::new(Expression::LambdaExpression {
             parameter: Name(0),
             body: Box::new(Expression::VariableExpression {name: Name(0)})
         }),
         argument: Box::new(Expression::LiteralExpression {
-            literal: Literal::IntegerLiteral {i64: 123}
+            literal: Literal::I64Literal {i64: 123}
         })
     });
     step(Expression::ApplicationExpression {
@@ -54,7 +56,7 @@ fn main() {
                 parameter: Name(2),
                 body: Box::new(Expression::VariableExpression {name: Name(2)})
             }) }),
-        argument: Box::new(Expression::LiteralExpression {literal: Literal::IntegerLiteral {i64: 123}})})
+        argument: Box::new(Expression::LiteralExpression {literal: Literal::I64Literal {i64: 123}})})
 }
 
 // Just call expand_whnf and repeat. Didn't even bother to use a loop.
@@ -101,15 +103,9 @@ fn substitute(that: Name, e: Expression, arg: Expression) -> Expression {
             },
         Expression::LiteralExpression{..} => e,
         Expression::LambdaExpression{parameter, body} =>
-        // This isn't necessary with a renamer step, which serves
-        // as an early alpha conversion.
-            if parameter == that {
-                Expression::LambdaExpression{parameter, body}
-            } else {
-                Expression::LambdaExpression {
-                    parameter,
-                    body: Box::new(substitute(that, *body, arg))
-                }
+            Expression::LambdaExpression {
+                parameter,
+                body: Box::new(substitute(that, *body, arg))
             },
         Expression::ApplicationExpression{function, argument} =>
             Expression::ApplicationExpression{
@@ -123,19 +119,20 @@ fn substitute(that: Name, e: Expression, arg: Expression) -> Expression {
 
 // https://github.com/duet-lang/duet/blob/f58e0f537c55713048fa17c723c7d0ad80a31368/src/Duet/Stepper.hs#L248
 
-fn rename(e: Expression, mut names: i64) -> Expression {
+fn rename(scope: &mut HashMap<Name,Name>, e: Expression, mut names: u64) -> Expression {
     match e {
         Expression::LiteralExpression{..} => e,
         Expression::ApplicationExpression{function, argument} =>
             Expression::ApplicationExpression {
-                function: Box::new(rename(*function, names)),
-                argument: Box::new(rename(*argument, names))
+                function: Box::new(rename(scope, *function, names)),
+                argument: Box::new(rename(scope, *argument, names))
             },
         Expression::LambdaExpression{parameter, body} => {
             names = names + 1;
+            scope.insert(parameter, Name(names));
             Expression::LambdaExpression {
-                parameter,
-                body: Box::new(rename(*body, names))
+                parameter: Name(names),
+                body: Box::new(rename(scope, *body, names))
             }
         },
         Expression::VariableExpression{..} => e
