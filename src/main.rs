@@ -68,13 +68,20 @@ fn main() {
 // Just call expand_whnf and repeat. Didn't even bother to use a loop.
 fn step(e: Expression) {
     let e_clone = e.clone();
-    println!("= {:#?}", e);
-    let e_expanded = expand_whnf(e);
-    if e_clone == e_expanded {
-        println!("Done!")
-    } else {
-        step(e_expanded);
-        // This could instead be a loop providing a coroutine ("iterator").
+    let mut scope = HashMap::new();
+    let mut names = 1000;
+    match rename(&mut scope, e_clone, &mut names) {
+        Err(e) => println!("Rename error: {:#?}", e),
+        Ok(e_renamed) => {
+            let e_renamed_clone = e_renamed.clone();
+            println!("= {:#?}", e_renamed);
+            let e_expanded = expand_whnf(e_renamed);
+            if e_renamed_clone == e_expanded {
+                println!("Done!")
+            } else {
+                step(e_expanded)
+            }
+        }
     }
 }
 
