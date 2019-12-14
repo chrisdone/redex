@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::result::Result;
 
 // Implements a trivial l-calc interpreter. Needs a renamer to be fully correct.
 //
@@ -14,6 +15,11 @@ use std::collections::HashMap;
 
 #[derive(Debug, PartialEq, Clone, Copy, Hash, Eq)]
 struct Name(pub u64);
+
+#[derive(Debug, PartialEq, Clone, Copy, Hash, Eq)]
+enum RenameError {
+    MissingName(Name)
+}
 
 #[derive(Debug, PartialEq, Clone)]
 // These boxes could be references, and the stepper could be a mutator.
@@ -119,22 +125,27 @@ fn substitute(that: Name, e: Expression, arg: Expression) -> Expression {
 
 // https://github.com/duet-lang/duet/blob/f58e0f537c55713048fa17c723c7d0ad80a31368/src/Duet/Stepper.hs#L248
 
-fn rename(scope: &mut HashMap<Name,Name>, e: Expression, names: &mut u64) -> Expression {
+fn rename(scope: &mut HashMap<Name,Name>, e: Expression, names: &mut u64) -> Result<Expression,RenameError> {
     match e {
-        Expression::LiteralExpression{..} => e,
+        Expression::LiteralExpression{..} => Ok(e),
         Expression::ApplicationExpression{function, argument} =>
-            Expression::ApplicationExpression {
-                function: Box::new(rename(scope, *function, names)),
-                argument: Box::new(rename(scope, *argument, names))
-            },
+            Ok(Expression::ApplicationExpression {
+                function: Box::new(rename(scope, *function, names)?),
+                argument: Box::new(rename(scope, *argument, names)?)
+            }),
         Expression::LambdaExpression{parameter, body} => {
             *names = *names + 1;
             scope.insert(parameter, Name(*names));
-            Expression::LambdaExpression {
+            Ok(Expression::LambdaExpression {
                 parameter: Name(*names),
-                body: Box::new(rename(scope, *body, names))
-            }
+                body: Box::new(rename(scope, *body, names)?)
+            })
         },
-        Expression::VariableExpression{..} => e
+        Expression::VariableExpression{name} =>
+            match scope.get(&name) {
+                None => Err(RenameError::MissingName(name)),
+                Some(replacement) =>
+                    Ok(Expression::VariableExpression{name: *replacement})
+            }
     }
 }
