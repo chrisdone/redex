@@ -38,31 +38,31 @@ enum Literal {
 }
 
 fn main() {
-    // step(Expression::VariableExpression {name: Name(0)});
-    // step(Expression::LiteralExpression {literal: Literal::I64Literal {i64: 123}});
-    // step(Expression::ApplicationExpression {
-    //     function: Box::new(Expression::LambdaExpression {
-    //         parameter: Name(0),
-    //         body: Box::new(Expression::VariableExpression {name: Name(0)})
-    //     }),
-    //     argument: Box::new(Expression::LiteralExpression {
-    //         literal: Literal::I64Literal {i64: 123}
-    //     })
-    // });
-    // step(Expression::ApplicationExpression {
-    //     function: Box::new(Expression::ApplicationExpression {
-    //         function: Box::new(Expression::LambdaExpression {
-    //             parameter: Name(0),
-    //             body: Box::new(Expression::LambdaExpression {
-    //                 parameter: Name(1),
-    //                 body: Box::new(Expression::ApplicationExpression {
-    //                     function: Box::new(Expression::VariableExpression {name: Name(0)}),
-    //                     argument: Box::new(Expression::VariableExpression {name: Name(1)})})})}),
-    //         argument: Box::new(Expression::LambdaExpression {
-    //             parameter: Name(2),
-    //             body: Box::new(Expression::VariableExpression {name: Name(2)})
-    //         }) }),
-    //     argument: Box::new(Expression::LiteralExpression {literal: Literal::I64Literal {i64: 123}})});
+    step(Expression::VariableExpression {name: Name(0)});
+    step(Expression::LiteralExpression {literal: Literal::I64Literal {i64: 123}});
+    step(Expression::ApplicationExpression {
+        function: Box::new(Expression::LambdaExpression {
+            parameter: Name(0),
+            body: Box::new(Expression::VariableExpression {name: Name(0)})
+        }),
+        argument: Box::new(Expression::LiteralExpression {
+            literal: Literal::I64Literal {i64: 123}
+        })
+    });
+    step(Expression::ApplicationExpression {
+        function: Box::new(Expression::ApplicationExpression {
+            function: Box::new(Expression::LambdaExpression {
+                parameter: Name(0),
+                body: Box::new(Expression::LambdaExpression {
+                    parameter: Name(1),
+                    body: Box::new(Expression::ApplicationExpression {
+                        function: Box::new(Expression::VariableExpression {name: Name(0)}),
+                        argument: Box::new(Expression::VariableExpression {name: Name(1)})})})}),
+            argument: Box::new(Expression::LambdaExpression {
+                parameter: Name(2),
+                body: Box::new(Expression::VariableExpression {name: Name(2)})
+            }) }),
+        argument: Box::new(Expression::LiteralExpression {literal: Literal::I64Literal {i64: 123}})});
     // y = \f -> (\x -> f (x x)) (\x -> f (x x))
 
     //         \                                x ->                                                                                f
