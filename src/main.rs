@@ -6,7 +6,7 @@ Example:
         Finished dev [unoptimized + debuginfo] target(s) in 0.00s
          Running `target/debug/redex`
 
-Memory use 1.7m, cpu = 100%
+Memory use a constant 1.7m, cpu = 100%
 
 13873 chris     20   0   17.0m   1.8m   1.6m R 100.0  0.0   0:26.34 redex
 
