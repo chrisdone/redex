@@ -66,7 +66,6 @@ fn main() {
     // y = \f -> (\x -> f (x x)) (\x -> f (x x))
 
     //         \                                x ->                                                                                f
-    //Expression::LambdaExpression{parameter:Name(1),body: Expression::ApplicationExpression { function: Expression:VariableExpression(Name(0)), argument:
     let x_x = Expression::ApplicationExpression{
         function: Box::new(Expression::VariableExpression{name: Name(1)}),
         argument: Box::new(Expression::VariableExpression{name: Name(1)})
