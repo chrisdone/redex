@@ -51,7 +51,7 @@ fn main() {
                 parameter: "z",
                 body: Box::new(Expression::VariableExpression {name: "z"})
             }) }),
-    argument: Box::new(Expression::LiteralExpression {literal: Literal::IntegerLiteral {i64: 123}})})
+        argument: Box::new(Expression::LiteralExpression {literal: Literal::IntegerLiteral {i64: 123}})})
 }
 
 // Just call expand_whnf and repeat. Didn't even bother to use a loop.
@@ -98,8 +98,8 @@ fn substitute<'a>(that: &'a str, e: Expression<'a>, arg: Expression<'a>) -> Expr
             },
         Expression::LiteralExpression{..} => e,
         Expression::LambdaExpression{parameter, body} =>
-            // This isn't necessary with a renamer step, which serves
-            // as an early alpha conversion.
+        // This isn't necessary with a renamer step, which serves
+        // as an early alpha conversion.
             if parameter == that {
                 Expression::LambdaExpression{parameter, body}
             } else {
@@ -119,3 +119,22 @@ fn substitute<'a>(that: &'a str, e: Expression<'a>, arg: Expression<'a>) -> Expr
 // Missing
 
 // https://github.com/duet-lang/duet/blob/f58e0f537c55713048fa17c723c7d0ad80a31368/src/Duet/Stepper.hs#L248
+
+fn rename(e: Expression, mut names: i64) -> Expression {
+    match e {
+        Expression::LiteralExpression{..} => e,
+        Expression::ApplicationExpression{function, argument} =>
+            Expression::ApplicationExpression {
+                function: Box::new(rename(*function, names)),
+                argument: Box::new(rename(*argument, names))
+            },
+        Expression::LambdaExpression{parameter, body} => {
+            names = names + 1;
+            Expression::LambdaExpression {
+                parameter,
+                body: Box::new(rename(*body, names))
+            }
+        },
+        Expression::VariableExpression{..} => e
+    }
+}
