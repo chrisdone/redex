@@ -2,9 +2,9 @@
 
 Example:
 
-    $ cargo watch -x run > /dev/null
-        Finished dev [unoptimized + debuginfo] target(s) in 0.00s
-         Running `target/debug/redex`
+$ cargo watch -x run > /dev/null
+Finished dev [unoptimized + debuginfo] target(s) in 0.00s
+Running `target/debug/redex`
 
 Memory use a constant 1.7m, cpu = 100%
 
@@ -12,7 +12,7 @@ Memory use a constant 1.7m, cpu = 100%
 
 That's good!
 
-*/
+ */
 
 use std::collections::HashMap;
 use std::result::Result;
@@ -40,11 +40,25 @@ enum RenameError {
 #[derive(Debug, PartialEq, Clone)]
 // These boxes could be references, and the stepper could be a mutator.
 enum Expression {
-    VariableExpression { name: Name },
-    ConstructorExpression { name: Box<String> },
-    LiteralExpression { literal: Literal },
-    ApplicationExpression { function: Box<Expression>, argument: Box<Expression> },
-    LambdaExpression { parameter: Name, body: Box<Expression> }
+    Variable { name: Name },
+    Constructor { name: Box<String> },
+    Literal { literal: Literal },
+    Application { function: Box<Expression>, argument: Box<Expression> },
+    Lambda { parameter: Name, body: Box<Expression> },
+    Case { scrutinee: Box<Expression>, alternatives: Vec<Box<Alternative>> }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+struct Alternative {
+    pattern: Box<Pattern>,
+    rhs: Box<Expression>
+}
+
+#[derive(Debug, PartialEq, Clone)]
+enum Pattern {
+    Constructor { name: Box<String>, arguments: Vec<Box<Pattern>> },
+    Variable { name: Name },
+    Wildcard
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -53,65 +67,81 @@ enum Literal {
 }
 
 fn main() {
-    step(Expression::ApplicationExpression {
-        function: Box::new(Expression::ConstructorExpression {name: Box::new("Just".to_string())}),
-        argument: Box::new(Expression::LiteralExpression {
-            literal: Literal::I64Literal {i64: 123}
-        })
-    });
+    step(
+        Expression::Case {
+            scrutinee: Box::new(Expression::Application {
+                function: Box::new(Expression::Constructor {name: Box::new("Just".to_string())}),
+                argument: Box::new(Expression::Literal {
+                    literal: Literal::I64Literal {i64: 123}
+                })}),
+            alternatives: vec![
+                Box::new(Alternative {
+                    pattern: Box::new(Pattern::Constructor {
+                        name: Box::new("Just".to_string()),
+                        arguments: vec![
+                            Box::new(Pattern::Variable { name: Name(0) })
+                        ]
+                    }),
+                    rhs: Box::new(
+                        Expression::Variable { name: Name(0) }
+                    )
+                })
+            ]
+        }
+    );
 
-    // step(Expression::VariableExpression {name: Name(0)});
-    // step(Expression::LiteralExpression {literal: Literal::I64Literal {i64: 123}});
-    // step(Expression::ApplicationExpression {
-    //     function: Box::new(Expression::LambdaExpression {
+    // step(Expression::Variable {name: Name(0)});
+    // step(Expression::Literal {literal: Literal::I64Literal {i64: 123}});
+    // step(Expression::Application {
+    //     function: Box::new(Expression::Lambda {
     //         parameter: Name(0),
-    //         body: Box::new(Expression::VariableExpression {name: Name(0)})
+    //         body: Box::new(Expression::Variable {name: Name(0)})
     //     }),
-    //     argument: Box::new(Expression::LiteralExpression {
+    //     argument: Box::new(Expression::Literal {
     //         literal: Literal::I64Literal {i64: 123}
     //     })
     // });
-    // step(Expression::ApplicationExpression {
-    //     function: Box::new(Expression::ApplicationExpression {
-    //         function: Box::new(Expression::LambdaExpression {
+    // step(Expression::Application {
+    //     function: Box::new(Expression::Application {
+    //         function: Box::new(Expression::Lambda {
     //             parameter: Name(0),
-    //             body: Box::new(Expression::LambdaExpression {
+    //             body: Box::new(Expression::Lambda {
     //                 parameter: Name(1),
-    //                 body: Box::new(Expression::ApplicationExpression {
-    //                     function: Box::new(Expression::VariableExpression {name: Name(0)}),
-    //                     argument: Box::new(Expression::VariableExpression {name: Name(1)})})})}),
-    //         argument: Box::new(Expression::LambdaExpression {
+    //                 body: Box::new(Expression::Application {
+    //                     function: Box::new(Expression::Variable {name: Name(0)}),
+    //                     argument: Box::new(Expression::Variable {name: Name(1)})})})}),
+    //         argument: Box::new(Expression::Lambda {
     //             parameter: Name(2),
-    //             body: Box::new(Expression::VariableExpression {name: Name(2)})
+    //             body: Box::new(Expression::Variable {name: Name(2)})
     //         }) }),
-    //     argument: Box::new(Expression::LiteralExpression {literal: Literal::I64Literal {i64: 123}})});
+    //     argument: Box::new(Expression::Literal {literal: Literal::I64Literal {i64: 123}})});
     // y = \f -> (\x -> f (x x)) (\x -> f (x x))
 
     //         \                                x ->                                                                                f
-    // let x_x = Expression::ApplicationExpression{
-    //     function: Box::new(Expression::VariableExpression{name: Name(1)}),
-    //     argument: Box::new(Expression::VariableExpression{name: Name(1)})
+    // let x_x = Expression::Application{
+    //     function: Box::new(Expression::Variable{name: Name(1)}),
+    //     argument: Box::new(Expression::Variable{name: Name(1)})
     // };
-    // let f_x_x = Expression::ApplicationExpression{
-    //     function: Box::new(Expression::VariableExpression{name: Name(0)}),
+    // let f_x_x = Expression::Application{
+    //     function: Box::new(Expression::Variable{name: Name(0)}),
     //     argument: Box::new(x_x)
     // };
-    // let lam_x_f_x_x = Expression::LambdaExpression{
+    // let lam_x_f_x_x = Expression::Lambda{
     //     parameter: Name(1),
     //     body: Box::new(f_x_x)
     // };
-    // let y = Expression::LambdaExpression{
+    // let y = Expression::Lambda{
     //     parameter: Name(0),
-    //     body: Box::new(Expression::ApplicationExpression{
+    //     body: Box::new(Expression::Application{
     //         function: Box::new(lam_x_f_x_x.clone()),
     //         argument: Box::new(lam_x_f_x_x)
     //     })
     // };
-    // let id = Expression::LambdaExpression{
+    // let id = Expression::Lambda{
     //     parameter: Name(0),
-    //     body: Box::new(Expression::VariableExpression{name: Name(0)})
+    //     body: Box::new(Expression::Variable{name: Name(0)})
     // };
-    // step(Expression::ApplicationExpression{
+    // step(Expression::Application{
     //     function: Box::new(y),
     //     argument: Box::new(id)
     // });
@@ -148,46 +178,53 @@ fn step(e0: Expression) {
 fn expand_whnf(e: Expression) -> Expression {
     match e {
         // No-ops:
-        Expression::VariableExpression{..} => e,
-        Expression::ConstructorExpression{..} => e,
-        Expression::LiteralExpression{..} => e,
-        Expression::LambdaExpression{..} => e,
+        Expression::Variable{..} => e,
+        Expression::Constructor{..} => e,
+        Expression::Literal{..} => e,
+        Expression::Lambda{..} => e,
         // Application of lambdas
-        Expression::ApplicationExpression{function, argument} =>
+        Expression::Application{function, argument} =>
             match *function {
-                Expression::LambdaExpression{parameter, body} =>
+                Expression::Lambda{parameter, body} =>
                     substitute(parameter, *body, *argument),
-                Expression::ConstructorExpression{..} =>
-                    Expression::ApplicationExpression{function, argument},
+                Expression::Constructor{..} =>
+                    Expression::Application{function, argument},
                 func => {
                     let inner = expand_whnf(func);
-                    Expression::ApplicationExpression{function: Box::new(inner), argument}
+                    Expression::Application{function: Box::new(inner), argument}
                 }
-            }
+            },
+        Expression::Case{scrutinee, alternatives} =>
+            Expression::Case{scrutinee, alternatives}
     }
 }
 
 // Haskell equiv. https://github.com/duet-lang/duet/blob/f58e0f537c55713048fa17c723c7d0ad80a31368/src/Duet/Stepper.hs#L313
 fn substitute(that: Name, e: Expression, arg: Expression) -> Expression {
     match e {
-        Expression::VariableExpression { name } =>
+        Expression::Variable { name } =>
             if name == that {
                 arg
             } else {
                 e
             },
-        Expression::LiteralExpression{..} => e,
-        Expression::ConstructorExpression{..} => e,
-        Expression::LambdaExpression{parameter, body} =>
-            Expression::LambdaExpression {
+        Expression::Literal{..} => e,
+        Expression::Constructor{..} => e,
+        Expression::Lambda{parameter, body} =>
+            Expression::Lambda {
                 parameter,
                 body: Box::new(substitute(that, *body, arg))
             },
-        Expression::ApplicationExpression{function, argument} =>
-            Expression::ApplicationExpression{
+        Expression::Application{function, argument} =>
+            Expression::Application{
                 function: Box::new(substitute(that, *function, arg.clone())),
                 argument: Box::new(substitute(that, *argument, arg.clone()))
-            }
+            },
+        Expression::Case{scrutinee, alternatives} =>
+            Expression::Case {
+                scrutinee,
+                alternatives
+            },
     }
 }
 
@@ -197,27 +234,32 @@ fn substitute(that: Name, e: Expression, arg: Expression) -> Expression {
 
 fn rename(scope: &HashMap<Name,Name>, e: Expression, names: &mut u64) -> Result<Expression,RenameError> {
     match e {
-        Expression::LiteralExpression{..} => Ok(e),
-        Expression::ConstructorExpression{..} => Ok(e),
-        Expression::ApplicationExpression{function, argument} =>
-            Ok(Expression::ApplicationExpression {
+        Expression::Literal{..} => Ok(e),
+        Expression::Constructor{..} => Ok(e),
+        Expression::Application{function, argument} =>
+            Ok(Expression::Application {
                 function: Box::new(rename(&scope, *function, names)?),
                 argument: Box::new(rename(&scope, *argument, names)?)
             }),
-        Expression::LambdaExpression{parameter, body} => {
+        Expression::Lambda{parameter, body} => {
             *names = *names + 1;
             let mut newscope = scope.clone();
             newscope.insert(parameter, Name(*names));
-            Ok(Expression::LambdaExpression {
+            Ok(Expression::Lambda {
                 parameter: Name(*names),
                 body: Box::new(rename(&newscope, *body, names)?)
             })
         },
-        Expression::VariableExpression{name} =>
+        Expression::Variable{name} =>
             match scope.get(&name) {
                 None => Err(RenameError::MissingName(name)),
                 Some(replacement) =>
-                    Ok(Expression::VariableExpression{name: *replacement})
-            }
+                    Ok(Expression::Variable{name: *replacement})
+            },
+        Expression::Case{scrutinee, alternatives} =>
+            Ok(Expression::Case{
+                scrutinee: Box::new(rename(scope, *scrutinee, names)?),
+                alternatives
+            })
     }
 }
