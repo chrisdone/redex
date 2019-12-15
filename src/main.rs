@@ -259,7 +259,36 @@ fn rename(scope: &HashMap<Name,Name>, e: Expression, names: &mut u64) -> Result<
         Expression::Case{scrutinee, alternatives} =>
             Ok(Expression::Case{
                 scrutinee: Box::new(rename(scope, *scrutinee, names)?),
-                alternatives
+                alternatives: {
+                    let result : Result<Vec<Box<Alternative>>,RenameError> = alternatives.into_iter().map(|alternative|{
+                        let mut new_alternative = *(alternative).clone();
+                        let new_scope = scope_from_pattern(&scope, &new_alternative.pattern, names);
+                        new_alternative.rhs = Box::new(rename(&new_scope, *new_alternative.rhs, names)?);
+                        Ok(Box::new(new_alternative))
+                    }).collect();
+                    result?
+                }
             })
+    }
+}
+
+fn scope_from_pattern(existing_scope: &HashMap<Name,Name>, pattern: &Pattern, names: &mut u64) -> HashMap<Name,Name> {
+    let mut new_scope = existing_scope.clone();
+    insert_by_pattern(&mut new_scope, pattern, names);
+    new_scope
+}
+
+fn insert_by_pattern(new_scope: &mut HashMap<Name,Name>, pattern: &Pattern, names: &mut u64) {
+    match *pattern {
+        Pattern::Wildcard => (),
+        Pattern::Variable { name } => {
+            *names = *names + 1;
+            new_scope.insert(name, Name(*names));
+        },
+        Pattern::Constructor { ref arguments, .. } => {
+            for argument in arguments.into_iter() {
+                insert_by_pattern(new_scope, &argument, names)
+            }
+        }
     }
 }
