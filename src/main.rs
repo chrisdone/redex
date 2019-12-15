@@ -174,7 +174,6 @@ fn step(e0: Expression) {
     }
 }
 
-// Haskell equiv. https://github.com/duet-lang/duet/blob/f58e0f537c55713048fa17c723c7d0ad80a31368/src/Duet/Stepper.hs#L75
 fn expand_whnf(e: Expression) -> Expression {
     match e {
         // No-ops:
@@ -199,7 +198,6 @@ fn expand_whnf(e: Expression) -> Expression {
     }
 }
 
-// Haskell equiv. https://github.com/duet-lang/duet/blob/f58e0f537c55713048fa17c723c7d0ad80a31368/src/Duet/Stepper.hs#L313
 fn substitute(that: Name, e: Expression, arg: Expression) -> Expression {
     match e {
         Expression::Variable { name } =>
@@ -231,10 +229,6 @@ fn substitute(that: Name, e: Expression, arg: Expression) -> Expression {
             },
     }
 }
-
-// Missing
-
-// https://github.com/duet-lang/duet/blob/f58e0f537c55713048fa17c723c7d0ad80a31368/src/Duet/Stepper.hs#L248
 
 fn rename(scope: &HashMap<Name,Name>, e: Expression, names: &mut u64) -> Result<Expression,RenameError> {
     match e {
