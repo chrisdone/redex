@@ -114,9 +114,9 @@ fn step(e0: Expression) {
     let mut e = e0;
     loop {
         let e_clone = e.clone();
-        let mut scope = HashMap::new();
+        let scope = HashMap::new();
         let mut names = 1000;
-        match rename(&mut scope, e_clone, &mut names) {
+        match rename(&scope, e_clone, &mut names) {
             Err(e) => {
                 println!("Rename error: {:#?}", e);
                 break
@@ -183,20 +183,21 @@ fn substitute(that: Name, e: Expression, arg: Expression) -> Expression {
 
 // https://github.com/duet-lang/duet/blob/f58e0f537c55713048fa17c723c7d0ad80a31368/src/Duet/Stepper.hs#L248
 
-fn rename(scope: &mut HashMap<Name,Name>, e: Expression, names: &mut u64) -> Result<Expression,RenameError> {
+fn rename(scope: &HashMap<Name,Name>, e: Expression, names: &mut u64) -> Result<Expression,RenameError> {
     match e {
         Expression::LiteralExpression{..} => Ok(e),
         Expression::ApplicationExpression{function, argument} =>
             Ok(Expression::ApplicationExpression {
-                function: Box::new(rename(scope, *function, names)?),
-                argument: Box::new(rename(scope, *argument, names)?)
+                function: Box::new(rename(&scope, *function, names)?),
+                argument: Box::new(rename(&scope, *argument, names)?)
             }),
         Expression::LambdaExpression{parameter, body} => {
             *names = *names + 1;
-            scope.insert(parameter, Name(*names));
+            let mut newscope = scope.clone();
+            newscope.insert(parameter, Name(*names));
             Ok(Expression::LambdaExpression {
                 parameter: Name(*names),
-                body: Box::new(rename(scope, *body, names)?)
+                body: Box::new(rename(&newscope, *body, names)?)
             })
         },
         Expression::VariableExpression{name} =>
