@@ -222,8 +222,12 @@ fn substitute(that: Name, e: Expression, arg: Expression) -> Expression {
             },
         Expression::Case{scrutinee, alternatives} =>
             Expression::Case {
-                scrutinee,
-                alternatives
+                scrutinee: Box::new(substitute(that, *scrutinee, arg.clone())),
+                alternatives: alternatives.into_iter().map(|alternative|{
+                    let mut new_alternative = *(alternative).clone();
+                    new_alternative.rhs = Box::new(substitute(that, *new_alternative.rhs, arg.clone()));
+                    Box::new(new_alternative)
+                }).collect()
             },
     }
 }
