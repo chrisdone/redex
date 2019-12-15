@@ -41,6 +41,7 @@ enum RenameError {
 // These boxes could be references, and the stepper could be a mutator.
 enum Expression {
     VariableExpression { name: Name },
+    ConstructorExpression { name: Box<String> },
     LiteralExpression { literal: Literal },
     ApplicationExpression { function: Box<Expression>, argument: Box<Expression> },
     LambdaExpression { parameter: Name, body: Box<Expression> }
@@ -52,61 +53,68 @@ enum Literal {
 }
 
 fn main() {
-    step(Expression::VariableExpression {name: Name(0)});
-    step(Expression::LiteralExpression {literal: Literal::I64Literal {i64: 123}});
     step(Expression::ApplicationExpression {
-        function: Box::new(Expression::LambdaExpression {
-            parameter: Name(0),
-            body: Box::new(Expression::VariableExpression {name: Name(0)})
-        }),
+        function: Box::new(Expression::ConstructorExpression {name: Box::new("Just".to_string())}),
         argument: Box::new(Expression::LiteralExpression {
             literal: Literal::I64Literal {i64: 123}
         })
     });
-    step(Expression::ApplicationExpression {
-        function: Box::new(Expression::ApplicationExpression {
-            function: Box::new(Expression::LambdaExpression {
-                parameter: Name(0),
-                body: Box::new(Expression::LambdaExpression {
-                    parameter: Name(1),
-                    body: Box::new(Expression::ApplicationExpression {
-                        function: Box::new(Expression::VariableExpression {name: Name(0)}),
-                        argument: Box::new(Expression::VariableExpression {name: Name(1)})})})}),
-            argument: Box::new(Expression::LambdaExpression {
-                parameter: Name(2),
-                body: Box::new(Expression::VariableExpression {name: Name(2)})
-            }) }),
-        argument: Box::new(Expression::LiteralExpression {literal: Literal::I64Literal {i64: 123}})});
+
+    // step(Expression::VariableExpression {name: Name(0)});
+    // step(Expression::LiteralExpression {literal: Literal::I64Literal {i64: 123}});
+    // step(Expression::ApplicationExpression {
+    //     function: Box::new(Expression::LambdaExpression {
+    //         parameter: Name(0),
+    //         body: Box::new(Expression::VariableExpression {name: Name(0)})
+    //     }),
+    //     argument: Box::new(Expression::LiteralExpression {
+    //         literal: Literal::I64Literal {i64: 123}
+    //     })
+    // });
+    // step(Expression::ApplicationExpression {
+    //     function: Box::new(Expression::ApplicationExpression {
+    //         function: Box::new(Expression::LambdaExpression {
+    //             parameter: Name(0),
+    //             body: Box::new(Expression::LambdaExpression {
+    //                 parameter: Name(1),
+    //                 body: Box::new(Expression::ApplicationExpression {
+    //                     function: Box::new(Expression::VariableExpression {name: Name(0)}),
+    //                     argument: Box::new(Expression::VariableExpression {name: Name(1)})})})}),
+    //         argument: Box::new(Expression::LambdaExpression {
+    //             parameter: Name(2),
+    //             body: Box::new(Expression::VariableExpression {name: Name(2)})
+    //         }) }),
+    //     argument: Box::new(Expression::LiteralExpression {literal: Literal::I64Literal {i64: 123}})});
     // y = \f -> (\x -> f (x x)) (\x -> f (x x))
 
     //         \                                x ->                                                                                f
-    let x_x = Expression::ApplicationExpression{
-        function: Box::new(Expression::VariableExpression{name: Name(1)}),
-        argument: Box::new(Expression::VariableExpression{name: Name(1)})
-    };
-    let f_x_x = Expression::ApplicationExpression{
-        function: Box::new(Expression::VariableExpression{name: Name(0)}),
-        argument: Box::new(x_x)
-    };
-    let lam_x_f_x_x = Expression::LambdaExpression{
-        parameter: Name(1),
-        body: Box::new(f_x_x)
-    };
-    let y = Expression::LambdaExpression{
-        parameter: Name(0),
-        body: Box::new(Expression::ApplicationExpression{
-            function: Box::new(lam_x_f_x_x.clone()),
-            argument: Box::new(lam_x_f_x_x)
-        })
-    };
-    let id = Expression::LambdaExpression{
-        parameter: Name(0),
-        body: Box::new(Expression::VariableExpression{name: Name(0)})
-    };
-    step(Expression::ApplicationExpression{
-        function: Box::new(y),
-        argument: Box::new(id)
-    });
+    // let x_x = Expression::ApplicationExpression{
+    //     function: Box::new(Expression::VariableExpression{name: Name(1)}),
+    //     argument: Box::new(Expression::VariableExpression{name: Name(1)})
+    // };
+    // let f_x_x = Expression::ApplicationExpression{
+    //     function: Box::new(Expression::VariableExpression{name: Name(0)}),
+    //     argument: Box::new(x_x)
+    // };
+    // let lam_x_f_x_x = Expression::LambdaExpression{
+    //     parameter: Name(1),
+    //     body: Box::new(f_x_x)
+    // };
+    // let y = Expression::LambdaExpression{
+    //     parameter: Name(0),
+    //     body: Box::new(Expression::ApplicationExpression{
+    //         function: Box::new(lam_x_f_x_x.clone()),
+    //         argument: Box::new(lam_x_f_x_x)
+    //     })
+    // };
+    // let id = Expression::LambdaExpression{
+    //     parameter: Name(0),
+    //     body: Box::new(Expression::VariableExpression{name: Name(0)})
+    // };
+    // step(Expression::ApplicationExpression{
+    //     function: Box::new(y),
+    //     argument: Box::new(id)
+    // });
 }
 
 // Just call expand_whnf and repeat. Didn't even bother to use a loop.
@@ -141,6 +149,7 @@ fn expand_whnf(e: Expression) -> Expression {
     match e {
         // No-ops:
         Expression::VariableExpression{..} => e,
+        Expression::ConstructorExpression{..} => e,
         Expression::LiteralExpression{..} => e,
         Expression::LambdaExpression{..} => e,
         // Application of lambdas
@@ -148,6 +157,8 @@ fn expand_whnf(e: Expression) -> Expression {
             match *function {
                 Expression::LambdaExpression{parameter, body} =>
                     substitute(parameter, *body, *argument),
+                Expression::ConstructorExpression{..} =>
+                    Expression::ApplicationExpression{function, argument},
                 func => {
                     let inner = expand_whnf(func);
                     Expression::ApplicationExpression{function: Box::new(inner), argument}
@@ -166,6 +177,7 @@ fn substitute(that: Name, e: Expression, arg: Expression) -> Expression {
                 e
             },
         Expression::LiteralExpression{..} => e,
+        Expression::ConstructorExpression{..} => e,
         Expression::LambdaExpression{parameter, body} =>
             Expression::LambdaExpression {
                 parameter,
@@ -186,6 +198,7 @@ fn substitute(that: Name, e: Expression, arg: Expression) -> Expression {
 fn rename(scope: &HashMap<Name,Name>, e: Expression, names: &mut u64) -> Result<Expression,RenameError> {
     match e {
         Expression::LiteralExpression{..} => Ok(e),
+        Expression::ConstructorExpression{..} => Ok(e),
         Expression::ApplicationExpression{function, argument} =>
             Ok(Expression::ApplicationExpression {
                 function: Box::new(rename(&scope, *function, names)?),
