@@ -61,7 +61,7 @@ enum Pattern {
     Wildcard
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 enum Literal {
     I64Literal { i64: i64 }
 }
@@ -148,8 +148,7 @@ fn main() {
 }
 
 // Just call expand_whnf and repeat. Didn't even bother to use a loop.
-fn step(e0: Expression) {
-    let mut e = e0;
+fn step(mut e: Expression) {
     loop {
         let e_clone = e.clone();
         let scope = HashMap::new();
@@ -216,7 +215,7 @@ fn substitute(that: Name, e: Expression, arg: Expression) -> Expression {
         Expression::Application{function, argument} =>
             Expression::Application{
                 function: Box::new(substitute(that, *function, arg.clone())),
-                argument: Box::new(substitute(that, *argument, arg.clone()))
+                argument: Box::new(substitute(that, *argument, arg))
             },
         Expression::Case{scrutinee, alternatives} =>
             Expression::Case {
